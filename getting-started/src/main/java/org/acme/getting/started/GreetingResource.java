@@ -8,6 +8,9 @@ import javax.ws.rs.core.MediaType;
 
 import org.jboss.resteasy.annotations.jaxrs.PathParam;
 
+import io.dapr.client.DaprClient;
+import io.dapr.client.DaprClientBuilder;
+
 @Path("/hello")
 public class GreetingResource {
 
@@ -18,7 +21,22 @@ public class GreetingResource {
     @Produces(MediaType.TEXT_PLAIN)
     @Path("/greeting/{name}")
     public String greeting(@PathParam String name) {
-        return service.greeting(name);
+        try (DaprClient client = new DaprClientBuilder().build()) {
+            System.out.println("Waiting for Dapr sidecar ...");
+            client.waitForSidecar(10000).block();
+            System.out.println("Dapr sidecar is ready.");
+    
+            String message = name;
+      
+            client.saveState("java-native-test", "firstkey", "abc".getBytes()).block();
+            System.out.println("Saving class with message: " + message);
+            client.deleteState("java-native-test", "firstkey", "100", null).block();
+          } catch (Exception ex) {            
+              System.out.println("Unexpected exception.");
+          }
+          
+          return service.greeting(name);
+
     }
 
     @GET
